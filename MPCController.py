@@ -13,7 +13,7 @@ class TrajectoryMPC:
         self.g =9.8
         self.quadrotor = quad
         self.logger=Console()
-        self.next_states=np.zeros((self.N+1,6),np.float32)
+        self.next_states=np.zeros((self.N,6),np.float32)
         self.u0 = np.zeros((self.N,4))
         self.Wx =  Wx                    # weight for state parameter
         self.Wu = Wu

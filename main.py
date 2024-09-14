@@ -10,8 +10,8 @@ TIME_INTERVAL =0.02
 N = 30
 MAX_THRUST=4.179446268*4
 
-Wx = np([16,11,13,2.0,2.1,2.3])
-Wu = np([17,13,76,0.058])
+Wx = np.array([16,11,13,2.0,2.1,2.3])
+Wu = np.array([17,13,76,0.058])
 logger =Console()
 
 if __name__ =="__main__":
@@ -38,5 +38,10 @@ if __name__ =="__main__":
         next_al_trajectory = mpc.desiredState(N,iter)
         next_al_control = mpc.desiredControl(N,iter)
         xnc =mpc.desiredXnc(N)
-        res =mpc.solve(next_al_trajectory,next_al_control,xnc)
+        try:
+            res =mpc.solve(next_al_trajectory,next_al_control,xnc)
+        except:
+            logger.log("Sovler stop abnormally!!!",style="red on white")
+        #TODO record result
+        
     
