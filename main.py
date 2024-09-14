@@ -42,6 +42,7 @@ if __name__ =="__main__":
             res =mpc.solve(next_al_trajectory,next_al_control,xnc)
         except:
             logger.log("Sovler stop abnormally!!!",style="red on white")
+            break
         #TODO record result
         
     

@@ -77,10 +77,10 @@ class TrajectoryMPC:
         velocity = x[3:] #body frame velocity
         phi,theta,psi = u[0],u[1],u[2]
         p,q,r = self.quadrotor.angular_velocity #三轴角速度
-        F=u[3] * ca.horzcat(theta.cos()*psi.cos(), theta.cos()*psi.sin(),theta.sin())
+        reb = self.calculateReb(phi,theta,psi)
+        F=reb*ca.vertcat(0,0 ,u[3])
         Fx,Fy,Fz =F[0],F[1],F[2]
         
-        reb = self.calculateReb(phi,theta,psi)
         velocity_world = ca.mtimes(reb,velocity.T)
         
         dot_velocity = ca.horzcat(
