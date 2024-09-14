@@ -121,7 +121,7 @@ class TrajectoryMPC:
         u_res =sol.value(self.uk)
         x_m = sol.value(self.xk)
         self.u0 ,self.next_states =self.shift(u_res,x_m)
-        return u_res
+        return u_res[0]
     
     def loadReferenceTrajectory(self,file="record_states.npy"):
         self.logger.log(f"Load reference trajectory from local file {file}")

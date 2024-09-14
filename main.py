@@ -1,9 +1,13 @@
+import matplotlib.backends
 from Quadrotor import Quadrotor
 from MPCController import TrajectoryMPC
 import numpy as np
 from rich.console import Console
 from rich.progress import track
 from rich.traceback import install
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 SIM_TIME =10
 TIME_INTERVAL =0.02
@@ -32,17 +36,38 @@ if __name__ =="__main__":
     hist_phi=[]
     hist_theta=[]
     hist_psi=[]
-    
+    hist_time=[]
     logger.log("start solving...", style="blue")
     for iter in track(range(int(SIM_TIME/TIME_INTERVAL))):
         next_al_trajectory = mpc.desiredState(N,iter)
         next_al_control = mpc.desiredControl(N,iter)
         xnc =mpc.desiredXnc(N)
         try:
-            res =mpc.solve(next_al_trajectory,next_al_control,xnc)
+            phi,theta,psi,thrust =mpc.solve(next_al_trajectory,next_al_control,xnc)
         except:
             logger.log("Sovler stop abnormally!!!",style="red on white")
             break
-        #TODO record result
-        
+        hist_phi.append(phi)
+        hist_theta.append(theta)
+        hist_psi.append(psi)
+        hist_thrust.append(thrust)
+        hist_time.append(iter*TIME_INTERVAL)
+    #draw reslut
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(hist_time,hist_thrust)
+    plt.xlabel("time: s")
+    plt.ylabel("thrust: N")
+    
+    plt.subplot(212)
+    plt.xlabel("time: s")
+    plt.ylabel("orientation: rad")
+    plt.plot(hist_time,hist_phi)
+    plt.plot(hist_time,hist_theta)
+    plt.plot(hist_time,hist_psi)
+    
+    plt.savefig("result.png")
+    
+    
+    
     
