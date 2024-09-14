@@ -36,8 +36,9 @@ if __name__ =="__main__":
     for iter in track(range(int(SIM_TIME/TIME_INTERVAL))):
         next_al_trajectory = mpc.desiredState(N,iter)
         next_al_control = mpc.desiredControl(N,iter)
+        xnc =mpc.desiredXnc(N)
         try:
-            res =mpc.solve()
+            res =mpc.solve(next_al_trajectory,next_al_control,xnc)
         except Exception as e:
             logger.print("Early exit!!!",style="red on white")  
             logger.log(e)
