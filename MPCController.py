@@ -29,8 +29,8 @@ class TrajectoryMPC:
         
     def setupController(self):
         self.optimizer =ca.Opti()
-        self.xk = self.optimizer.variable(self.N+1,6)
-        self.xk_ref =self.optimizer.parameter(self.N+1,6)
+        self.xk = self.optimizer.variable(self.N,6)
+        self.xk_ref =self.optimizer.parameter(self.N,6)
         self.uk =self.optimizer.variable(self.N,4)
         self.uk_ref =self.optimizer.parameter(self.N,4)
         self.xnc =self.optimizer.variable(1,6)
@@ -42,7 +42,7 @@ class TrajectoryMPC:
         # 初始状态
         self.optimizer.subject_to(self.xk[0,:] == self.xk_ref[0,:])
         self.optimizer.subject_to(self.uk[0,:] == self.uk_ref[0,:])
-        for k in range(self.N):
+        for k in range(self.N-1):
             x_next = self.fd(self.xk[k,:],self.uk[k,:])
             self.optimizer.subject_to(self.xk[k+1,:]==x_next)
         self.optimizer.subject_to(self.xnc == self.xk[k])
@@ -108,8 +108,8 @@ class TrajectoryMPC:
     
     
     def solve(self,next_trajectory,next_controls,Xnc_ref):
-        self.optimizer.set_value(self.xk_ref,next_trajectory)
-        self.optimizer.set_value(self.uk_ref,next_controls)
+        self.optimizer.set_value(self.xk_ref,next_trajectory.T)
+        self.optimizer.set_value(self.uk_ref,next_controls.T)
         self.optimizer.set_value(self.w_x,self.Wx)
         self.optimizer.set_value(self.w_u,self.Wu)
         self.optimizer.set_value(self.w_nc,self.Wnc)
@@ -126,7 +126,6 @@ class TrajectoryMPC:
     def loadReferenceTrajectory(self,file="record_states.npy"):
         self.logger.log(f"Load reference trajectory from local file {file}")
         data =np.load(file,allow_pickle=True).item()
-        ref_trajectory = data
         self.ref_xs = data["x"]
         self.ref_ys = data["y"]
         self.ref_zs= data["z"]
@@ -186,10 +185,10 @@ class TrajectoryMPC:
         return Xnc
     
     def desiredControl(self,N,idx):
-        phi_ref =self.ref_controls[idx:(idx+N)][0]
-        theta_ref =self.ref_controls[idx:(idx+N)][1]
-        psi_ref =self.ref_controls[idx:(idx+N)][2]
-        thrust_ref =self.ref_controls[idx:(idx+N)][3] *self.quadrotor.max_thrust
+        phi_ref =self.ref_controls[idx:(idx+N),0]
+        theta_ref =self.ref_controls[idx:(idx+N),1]
+        psi_ref =self.ref_controls[idx:(idx+N),2]
+        thrust_ref =self.ref_controls[idx:(idx+N),3] *self.quadrotor.max_thrust
         
         length = len(thrust_ref)
         if length<N:
@@ -203,5 +202,5 @@ class TrajectoryMPC:
            np.concatenate([psi_ref,psi_ex],axis=None) 
            np.concatenate([thrust_ref,thrust_ex],axis=None)
 
-        U= np.array([phi_ref,theta_ref,psi_ref])
+        U= np.array([phi_ref,theta_ref,psi_ref,thrust_ref])
         return U
