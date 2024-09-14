@@ -90,5 +90,5 @@ if __name__ =="__main__":
         "thrust":hist_thrust
     }
     np.save("result_controls.npy",save_data,allow_pickle=True)
-    
+
     

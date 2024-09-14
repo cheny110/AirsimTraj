@@ -40,15 +40,10 @@ class Quadrotor:
         self.logger.log("Quadrotor reset!!!",style="red on white")
         self.lock_.acquire_lock()
         self.rotor.reset()
-        self.lock_.release_lock()
-        self.lock_.acquire_lock()
         self.rotor.enableApiControl(True)
-        self.lock_.release_lock()
-        self.lock_.acquire_lock()
         self.rotor.armDisarm(True)
         self.lock_.release_lock()
         self.logger.log("Clear all persistent markers.")
-        
         #self.rotor.simFlushPersistentMarkers()
     
     def takeoff(self):
@@ -128,15 +123,7 @@ class Quadrotor:
         np.save(save_file,save_data,allow_pickle=True)
         
         self.logger.log("print saved trajectory in red line for reference",style="white on blue")
-        # plot_trajectory =[]
-        # for i in range(len(records)):
-        #     traj=Vector3r(records[i][0],records[i][1],records[i][2])
-        #     plot_trajectory.append(traj)
-        # self.lock_.acquire_lock()
-        # self.rotor.simPlotPoints(plot_trajectory,size=1,is_persistent=True)
-        # self.lock_.release_lock()
-    
-    
+
         
     def hover(self):
         self.lock_.acquire_lock()
