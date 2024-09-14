@@ -22,7 +22,8 @@ if __name__ =="__main__":
         quadrotor.recordTrajectory()
         quadrotor.reset()
         logger.print("Reference control generated.",style="blue on white")
-        
+    else:
+        logger.log("Ignore reference trajectory generation.")
     mpc =TrajectoryMPC(quadrotor,Wx,Wu,TIME_INTERVAL,N)
     mpc.setReferenceControl(mpc.quadrotor.controls)
     mpc.loadReferenceTrajectory()
@@ -32,14 +33,13 @@ if __name__ =="__main__":
     hist_psi=[]
     
     logger.log("start solving...", style="blue")
-    for iter in track(range(SIM_TIME/TIME_INTERVAL)):
+    for iter in track(range(int(SIM_TIME/TIME_INTERVAL))):
         next_al_trajectory = mpc.desiredState(N,iter)
         next_al_control = mpc.desiredControl(N,iter)
-        
         try:
             res =mpc.solve()
         except Exception as e:
-            logger.print("Early exit!!!",style="red on white")
-            
-        break
+            logger.print("Early exit!!!",style="red on white")  
+            logger.log(e)
+            break
     

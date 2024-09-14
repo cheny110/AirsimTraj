@@ -40,12 +40,16 @@ class Quadrotor:
         self.logger.log("Quadrotor reset!!!",style="red on white")
         self.lock_.acquire_lock()
         self.rotor.reset()
-        self.rotor.enableApiControl(True)
-        self.rotor.armDisarm(True)
-        self.logger.log()
-        self.logger.log("Clear all persistent markers.")
-        self.rotor.simFlushPersistentMarkers()
         self.lock_.release_lock()
+        self.lock_.acquire_lock()
+        self.rotor.enableApiControl(True)
+        self.lock_.release_lock()
+        self.lock_.acquire_lock()
+        self.rotor.armDisarm(True)
+        self.lock_.release_lock()
+        self.logger.log("Clear all persistent markers.")
+        
+        #self.rotor.simFlushPersistentMarkers()
     
     def takeoff(self):
         self.rotor.takeoffAsync().join()
@@ -73,23 +77,23 @@ class Quadrotor:
         while True:
             self.lock_.acquire_lock()
             self.kinematics=self.rotor.simGetGroundTruthKinematics()
+            self.orientation=self.rotor.getImuData().orientation
             self.lock_.release_lock()
             self.velocity = self.kinematics.linear_velocity
             self.position =self.kinematics.position
-            self.orientation=self.kinematics.orientation
             self.angular_velocity =self.kinematics.angular_velocity
-            self.pitch,self.roll,self.yaw=to_eularian_angles(self.kinematics.orientation) #odom frame
-            #self.logger.log(f"update kinematics once.")
+
+            self.pitch,self.roll,self.yaw=to_eularian_angles(self.orientation) #机体坐标系
+            #self.logger.log(f"roll:{self.roll}, pitch:{self.pitch},yaw:{self.yaw}")
             sleep(0.005)
     
-    def calculateReb(self):
-        pitch,roll,yaw=to_eularian_angles(self.kinematics.orientation)
-        phi,theta,psi = roll,pitch,yaw
-        self.reb = np.array([
-            [cos(theta)*cos(psi), sin(phi)*sin(theta)*cos(psi)-sin(psi)*cos(phi), cos(phi)*cos(theta)*cos(psi)+sin(phi)*sin(psi) ],
-            [cos(theta)*sin(psi), sin(phi)*sin(theta)*sin(psi)+cos(psi)*cos(phi), cos(phi)*sin(theta)*sin(psi)-sin(phi)*cos(psi) ],
-            [-sin(theta)        , sin(phi)*cos(theta),                            cos(phi)*cos(theta)]
-        ])
+    # def calculateReb(self):
+    #     phi,theta,psi = self.roll,self.pitch,self.yaw
+    #     self.reb = np.array([
+    #         [cos(theta)*cos(psi), sin(phi)*sin(theta)*cos(psi)-sin(psi)*cos(phi), cos(phi)*cos(theta)*cos(psi)+sin(phi)*sin(psi) ],
+    #         [cos(theta)*sin(psi), sin(phi)*sin(theta)*sin(psi)+cos(psi)*cos(phi), cos(phi)*sin(theta)*sin(psi)-sin(phi)*cos(psi) ],
+    #         [-sin(theta)        , sin(phi)*cos(theta),                            cos(phi)*cos(theta)]
+    #     ])
     
     def recordTrajectory(self,save_file="record_states.npy"):
         self.logger.log(f"Start recording trajectory for {self.sim_time} seconds, time interval:{self.interval} s."
