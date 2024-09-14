@@ -8,6 +8,7 @@ from rich.traceback import install
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
+from plotting_3d import Plotting
 
 SIM_TIME =10
 TIME_INTERVAL =0.02
@@ -37,37 +38,57 @@ if __name__ =="__main__":
     hist_theta=[]
     hist_psi=[]
     hist_time=[]
+    hist_x=[]
+    hist_y=[]
+    hist_z=[]
     logger.log("start solving...", style="blue")
     for iter in track(range(int(SIM_TIME/TIME_INTERVAL))):
         next_al_trajectory = mpc.desiredState(N,iter)
         next_al_control = mpc.desiredControl(N,iter)
         xnc =mpc.desiredXnc(N)
         try:
-            phi,theta,psi,thrust =mpc.solve(next_al_trajectory,next_al_control,xnc)
-        except:
+            u_res,x =mpc.solve(next_al_trajectory,next_al_control,xnc)
+            phi,theta,psi,thrust =u_res
+            x,y,z =x[:3]
+        except Exception as e:
             logger.log("Sovler stop abnormally!!!",style="red on white")
+            logger.log(e)
             break
         hist_phi.append(phi)
         hist_theta.append(theta)
         hist_psi.append(psi)
         hist_thrust.append(thrust)
         hist_time.append(iter*TIME_INTERVAL)
+        hist_x.append(x)
+        hist_y.append(y)
+        hist_z.append(z)
     #draw reslut
     plt.figure()
-    plt.subplot(211)
+    plt.subplot(311)
     plt.plot(hist_time,hist_thrust)
     plt.xlabel("time: s")
     plt.ylabel("thrust: N")
     
-    plt.subplot(212)
+    plt.subplot(312)
     plt.xlabel("time: s")
     plt.ylabel("orientation: rad")
     plt.plot(hist_time,hist_phi)
     plt.plot(hist_time,hist_theta)
     plt.plot(hist_time,hist_psi)
-    
     plt.savefig("result.png")
+
     
-    
+    plot = Plotting("Quadrotor")
+    plot.plot_path([hist_x,hist_y,hist_y],"quadrotor")
+    reference = [mpc.ref_xs,mpc.ref_ys,mpc.ref_zs]
+    plot.plot_path(reference, "reference")
+    #save result
+    save_data = {
+        "phi":hist_phi,
+        "theta":hist_theta,
+        "psi": hist_psi,
+        "thrust":hist_thrust
+    }
+    np.save("result_controls.npy",save_data,allow_pickle=True)
     
     
