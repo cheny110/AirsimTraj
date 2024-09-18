@@ -3,7 +3,7 @@ from Quadrotor import Quadrotor
 from rich.console import Console
 import numpy as np
 from threading import Lock
-
+from rich.progress import track
 logger =Console()
 lock =Lock()
 if __name__ =="__main__":
@@ -19,13 +19,11 @@ if __name__ =="__main__":
     psi = trajectory["psi"]
     thrust= trajectory["thrust"]
     thrust_norm=[]
-    rotor.lock_.acquire_lock()
     rotor.takeoff()
-    rotor.lock_.release_lock()
     for t in thrust:
         t/=rotor.max_thrust
         thrust_norm.append(t)
-    for i,j,k,n in zip(phi,theta,psi,thrust_norm):
+    for i,j,k,n in track(zip(phi,theta,psi,thrust_norm)):
         rotor.lock_.acquire_lock()
         rotor.rotor.moveByRollPitchYawThrottleAsync(i,j,k,n,rotor.interval).join()
         rotor.lock_.release_lock()

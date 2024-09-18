@@ -20,7 +20,7 @@ Wu = np.array([17,13,76,0.058])
 logger =Console()
 
 if __name__ =="__main__":
-    install(show_locals=True)
+    #install(show_locals=True)
     quadrotor =Quadrotor(max_thrust=MAX_THRUST,interval=TIME_INTERVAL)
     string=logger.input("Need to generate refercence control?(Y/N):")
     if string.lower() =="y":

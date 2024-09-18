@@ -16,6 +16,7 @@ class Quadrotor:
         self.dpos = np.array(dpos)
         self.dori = np.array(dori) # dot orientation
         self.mass = 1.0
+        self.g = 9.8
         self.sim_time=sim_time
         self.interval =interval 
         self.logger =Console()
@@ -29,10 +30,10 @@ class Quadrotor:
     def ref_control(self,sim_time=30,interval=0.02):
         controls=[]
         for i in range(int(sim_time/0.02)):
-            phi =1e-4 *i
-            theta =1e-4*i
-            psi = 0.001*i
-            thrust = 1.05*self.mass*9.8/self.max_thrust
+            phi =2e-6*cos(i*self.interval) +8e-4*i
+            theta =1e-6*pow(i,2)+1e-4*i
+            psi = 5e-6*pow(i,2) +8e-4*i
+            thrust = 1.2*self.mass*9.8/self.max_thrust
             controls.append([phi,theta,psi,thrust])
         return controls
     
@@ -47,11 +48,14 @@ class Quadrotor:
         #self.rotor.simFlushPersistentMarkers()
     
     def takeoff(self):
+        self.lock_.acquire_lock()
         self.rotor.takeoffAsync().join()
+        self.lock_.release_lock()
     
     def connectAirsim(self):
         self.rotor.confirmConnection()
         self.rotor.enableApiControl(True)
+        self.rotor.startRecording()
         self.rotor.armDisarm(False)
         
     def runBackgroudThreads(self):
@@ -77,18 +81,20 @@ class Quadrotor:
             self.velocity = self.kinematics.linear_velocity
             self.position =self.kinematics.position
             self.angular_velocity =self.imu.angular_velocity
-
             self.pitch,self.roll,self.yaw=to_eularian_angles(self.imu.orientation) #机体坐标系
+            self.acceleration = self.imu.linear_acceleration
             #self.logger.log(f"roll:{self.roll}, pitch:{self.pitch},yaw:{self.yaw}")
+            self.calculateReb()
             sleep(0.005)
     
-    # def calculateReb(self):
-    #     phi,theta,psi = self.roll,self.pitch,self.yaw
-    #     self.reb = np.array([
-    #         [cos(theta)*cos(psi), sin(phi)*sin(theta)*cos(psi)-sin(psi)*cos(phi), cos(phi)*cos(theta)*cos(psi)+sin(phi)*sin(psi) ],
-    #         [cos(theta)*sin(psi), sin(phi)*sin(theta)*sin(psi)+cos(psi)*cos(phi), cos(phi)*sin(theta)*sin(psi)-sin(phi)*cos(psi) ],
-    #         [-sin(theta)        , sin(phi)*cos(theta),                            cos(phi)*cos(theta)]
-    #     ])
+    def calculateReb(self):
+        
+        phi,theta,psi = self.roll,self.pitch,self.yaw
+        self.reb = np.array([
+            [cos(theta)*cos(psi), sin(phi)*sin(theta)*cos(psi)-sin(psi)*cos(phi), cos(phi)*cos(theta)*cos(psi)+sin(phi)*sin(psi) ],
+            [cos(theta)*sin(psi), sin(phi)*sin(theta)*sin(psi)+cos(psi)*cos(phi), cos(phi)*sin(theta)*sin(psi)-sin(phi)*cos(psi) ],
+            [-sin(theta)        , sin(phi)*cos(theta),                            cos(phi)*cos(theta)]
+        ])
     
     def recordTrajectory(self,save_file="record_states.npy"):
         self.logger.log(f"Start recording trajectory for {self.sim_time} seconds, time interval:{self.interval} s."
@@ -125,14 +131,47 @@ class Quadrotor:
         self.logger.log("print saved trajectory in red line for reference",style="white on blue")
 
         
+    def playbackControls(self,value):
+        data=[]
+        if type(value) ==str: #file name
+            data =np.load(value,allow_pickle=True).item()
+        elif type(value) == dict:
+            data = value
+        else:
+            self.logger.log(f"Unsupported value format!!!")
+        phis=data["phi"]
+        thetas=data["theta"]
+        psis= data["psi"]
+        thrusts =data["thrust"]   
+        thrusts_norm=[]
+        for t in thrusts:
+            t/=self.max_thrust
+            thrusts_norm.append(t) 
+        self.logger.log("Now playback RC recording...")
+        for i,j,k,m in zip(phis,thetas,psis,thrusts_norm):
+            self.lock_.acquire_lock()
+            self.rotor.moveByRollPitchYawThrottleAsync(i,j,k,m,self.interval).join()
+            self.lock_.release_lock()
+        
+        
     def hover(self):
         self.lock_.acquire_lock()
         self.rotor.hoverAsync()
         self.lock_.release_lock()
-
-if __name__ =="__main__":
+        
+def run():
     rotor=Quadrotor()
     rotor.reset()
+    rotor.takeoff()
     rotor.setTracelineType()
     rotor.recordTrajectory()
     rotor.hover()
+    
+def playback():
+    rotor=Quadrotor()
+    rotor.reset()
+    rotor.takeoff()
+    rotor.playbackControls("record_rc.npy")
+
+if __name__ =="__main__":
+    run()

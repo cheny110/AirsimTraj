@@ -58,13 +58,13 @@ class TrajectoryMPC:
         
         # 设置上下限
         self.optimizer.subject_to(self.optimizer.bounded(
-            [-35*math.pi/180,-35*math.pi/180,-math.pi,0.5*self.quadrotor.mass*self.g],
+            [-180*math.pi/180,-180*math.pi/180,-math.pi,0],
             self.uk[:,:].T, 
-            [35*math.pi/180,35*math.pi/180,math.pi,1.8*self.quadrotor.mass*self.g]
+            [180*math.pi/180,180*math.pi/180,math.pi,self.quadrotor.max_thrust]
         ))
         
         opts_settings={
-            'ipopt.max_iter':2000,
+            'ipopt.max_iter':3000,
             'ipopt.print_level':0,
             'print_time':0,
             'ipopt.acceptable_tol':1e-8,
