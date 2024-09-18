@@ -5,7 +5,7 @@ from airsim import to_eularian_angles
 from rich.console import Console
 from time import sleep
 from threading import Thread,Lock
-from math import cos,sin
+from math import cos,sin,sqrt
 from rich.progress import track
 
 class Quadrotor:
@@ -30,10 +30,10 @@ class Quadrotor:
     def ref_control(self,sim_time=30,interval=0.02):
         controls=[]
         for i in range(int(sim_time/0.02)):
-            phi =2e-6*cos(i*self.interval) +8e-4*i
-            theta =1e-6*pow(i,2)+1e-4*i
-            psi = 5e-6*pow(i,2) +8e-4*i
-            thrust = 1.2*self.mass*9.8/self.max_thrust
+            phi =1e-4 *i
+            theta =1e-4*i
+            psi = 0.001*i
+            thrust = 1.05*self.mass*9.8/self.max_thrust
             controls.append([phi,theta,psi,thrust])
         return controls
     
@@ -67,9 +67,9 @@ class Quadrotor:
         for t in self.threads_:
             t.start()
     
-    def setTracelineType(self):
+    def setTracelineType(self,color=[1,0,0,1],width=1):
         self.lock_.acquire_lock()
-        self.rotor.simSetTraceLine([0,0,1,1],1)#blue
+        self.rotor.simSetTraceLine(color,width)
         self.lock_.release_lock()
         
     def updateKinematics(self):
@@ -88,10 +88,9 @@ class Quadrotor:
             sleep(0.005)
     
     def calculateReb(self):
-        
         phi,theta,psi = self.roll,self.pitch,self.yaw
         self.reb = np.array([
-            [cos(theta)*cos(psi), sin(phi)*sin(theta)*cos(psi)-sin(psi)*cos(phi), cos(phi)*cos(theta)*cos(psi)+sin(phi)*sin(psi) ],
+            [cos(theta)*cos(psi), sin(phi)*sin(theta)*cos(psi)-sin(psi)*cos(phi), cos(phi)*sin(theta)*cos(psi)+sin(phi)*sin(psi) ],
             [cos(theta)*sin(psi), sin(phi)*sin(theta)*sin(psi)+cos(psi)*cos(phi), cos(phi)*sin(theta)*sin(psi)-sin(phi)*cos(psi) ],
             [-sin(theta)        , sin(phi)*cos(theta),                            cos(phi)*cos(theta)]
         ])
@@ -130,6 +129,75 @@ class Quadrotor:
         
         self.logger.log("print saved trajectory in red line for reference",style="white on blue")
 
+    def recordRcTrajectory(self,save_file="record_rc.npy"):
+        #first disable api control
+        self.logger.log("Now API control would be disabled!",style="red")
+        self.lock_.acquire_lock()
+        self.rotor.enableApiControl(False)
+        self.lock_.release_lock()
+        self.logger.log(f"Start recording manual fly. simulation time:{self.sim_time} s, interval: f{self.interval} s")
+        xs=[]
+        ys=[]
+        zs=[]
+        us=[]
+        vs=[]
+        ws=[]
+        phis=[]
+        thetas=[]
+        psis=[]
+        thrusts=[]
+        x_pre,y_pre,z_pre =self.position.x_val,self.position.y_val,self.position.z_val
+        u_pre,v_pre,w_pre =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
+        roll_pre,pitch_pre,yaw_pre =self.roll,self.pitch,self.yaw
+        for i in track(range(int(self.sim_time/self.interval))):
+            x,y,z =self.position.x_val,self.position.y_val,self.position.z_val
+            u,v,w =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
+            roll,pitch,yaw =self.roll,self.pitch,self.yaw
+            #calculate thrust
+            u,v,w =(x-x_pre)/self.interval,(y-y_pre)/self.interval,(z-z_pre)/self.interval
+            dot_u,dot_v,dot_w = (u-u_pre)/self.interval,(v-v_pre)/self.interval,(w-w_pre)/self.interval
+            p,q,r = self.angular_velocity.x_val,self.angular_velocity.y_val,self.angular_velocity.z_val
+            Fx = (dot_u-r*v +q*w-self.g*sin(self.pitch))*self.mass
+            Fy = (dot_v-p*w+r*u+self.g*sin(self.roll)*cos(self.pitch))*self.mass
+            Fz = (dot_w -q*u+p*v+self.g*cos(self.roll)*cos(self.pitch))*self.mass
+            thrust =sqrt(Fx**2+Fy**2+Fz**2)
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+            us.append(u)
+            vs.append(v)
+            ws.append(w)
+            phis.append(self.roll)
+            thetas.append(self.pitch)
+            psis.append(self.yaw)
+            thrusts.append(thrust)
+            x_pre,y_pre,z_pre =x,y,z
+            u_pre,v_pre,w_pre =u,v,w
+            sleep(self.interval)
+
+        # re-enable  api contol
+        self.logger.log(f"Record finished, api control would be enabled.",style="blue")
+        self.lock_.acquire_lock()
+        self.rotor.enableApiControl(True)
+        self.lock_.release_lock()
+        
+        #save record data to file.
+        self.logger.log(f"recorded rc control data wouble be saved to {save_file}")
+        save_data = {
+            #state
+            "x": xs,
+            "y": ys,
+            "z": zs,
+            "u": us,
+            "v": vs,
+            "w": ws,
+            #controls
+            "phi":phis,
+            "theta":thetas,
+            "psi":psis,
+            "thrust":thrusts
+        }
+        np.save(save_file,save_data,allow_pickle=True)
         
     def playbackControls(self,value):
         data=[]
@@ -163,15 +231,16 @@ def run():
     rotor=Quadrotor()
     rotor.reset()
     rotor.takeoff()
-    rotor.setTracelineType()
-    rotor.recordTrajectory()
+    rotor.setTracelineType([0,1,0,1])
+    rotor.recordRcTrajectory()
     rotor.hover()
     
 def playback():
     rotor=Quadrotor()
     rotor.reset()
     rotor.takeoff()
+    rotor.setTracelineType([0,0,1,1])
     rotor.playbackControls("record_rc.npy")
 
 if __name__ =="__main__":
-    run()
+    playback()
