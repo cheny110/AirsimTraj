@@ -98,13 +98,8 @@ class Quadrotor:
     
     def recordTrajectory(self,save_file="record_states.npy"):
         self.logger.log(f"Start recording trajectory for {self.sim_time} seconds, time interval:{self.interval} s."
-                        , style= "white on blue")
-        xs=[]
-        ys=[]
-        zs=[]
-        us=[]
-        vs=[]
-        ws=[]
+                        ,style= "white on blue")
+        xs=ys=zs=us=vs=ws=list()
         for i in track(range(int(self.sim_time/self.interval))):
             x,y,z =self.position.x_val,self.position.y_val,self.position.z_val
             u,v,w =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
