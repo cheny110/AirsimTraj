@@ -156,7 +156,7 @@ class Quadrotor:
             #calculate thrust
             u,v,w =(x-x_pre)/self.interval,(y-y_pre)/self.interval,(z-z_pre)/self.interval
             dot_u,dot_v,dot_w = (u-u_pre)/self.interval,(v-v_pre)/self.interval,(w-w_pre)/self.interval
-            p,q,r = self.angular_velocity.x_val,self.angular_velocity.y_val,self.angular_velocity.z_val
+            p,q,r = (roll-roll_pre)/self.interval ,(pitch-pitch_pre)/self.interval,(yaw-yaw_pre)/self.interval
             Fx = (dot_u-r*v +q*w-self.g*sin(self.pitch))*self.mass
             Fy = (dot_v-p*w+r*u+self.g*sin(self.roll)*cos(self.pitch))*self.mass
             Fz = (dot_w -q*u+p*v+self.g*cos(self.roll)*cos(self.pitch))*self.mass
@@ -167,12 +167,13 @@ class Quadrotor:
             us.append(u)
             vs.append(v)
             ws.append(w)
-            phis.append(self.roll)
-            thetas.append(self.pitch)
-            psis.append(self.yaw)
+            phis.append(roll)
+            thetas.append(pitch)
+            psis.append(yaw)
             thrusts.append(thrust)
             x_pre,y_pre,z_pre =x,y,z
             u_pre,v_pre,w_pre =u,v,w
+            roll_pre,pitch_pre,yaw_pre =roll,pitch,yaw
             sleep(self.interval)
 
         # re-enable  api contol
