@@ -1,6 +1,5 @@
 import numpy as np
-import rich
-from airsim.client import MultirotorClient,Vector3r
+from airsim.client import MultirotorClient
 from airsim import to_eularian_angles
 from rich.console import Console
 from time import sleep
@@ -32,7 +31,7 @@ class Quadrotor:
         for i in range(int(sim_time/0.02)):
             phi =1e-4 *i
             theta =1e-4*i
-            psi = 0.001*i
+            psi = 1e-4*i
             thrust = 1.05*self.mass*9.8/self.max_thrust
             controls.append([phi,theta,psi,thrust])
         return controls
@@ -133,7 +132,7 @@ class Quadrotor:
         #first disable api control
         self.logger.log("Now API control would be disabled!",style="red")
         self.lock_.acquire_lock()
-        self.rotor.enableApiControl(False)
+        self.rotor.enableApiControl(True)
         self.lock_.release_lock()
         self.logger.log(f"Start recording manual fly. simulation time:{self.sim_time} s, interval: f{self.interval} s")
         xs=[]
@@ -146,7 +145,6 @@ class Quadrotor:
         thetas=[]
         psis=[]
         thrusts=[]
-        x_pre,y_pre,z_pre =self.position.x_val,self.position.y_val,self.position.z_val
         u_pre,v_pre,w_pre =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
         roll_pre,pitch_pre,yaw_pre =self.roll,self.pitch,self.yaw
         for i in track(range(int(self.sim_time/self.interval))):
@@ -154,9 +152,9 @@ class Quadrotor:
             u,v,w =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
             roll,pitch,yaw =self.roll,self.pitch,self.yaw
             #calculate thrust
-            u,v,w =(x-x_pre)/self.interval,(y-y_pre)/self.interval,(z-z_pre)/self.interval
-            dot_u,dot_v,dot_w = (u-u_pre)/self.interval,(v-v_pre)/self.interval,(w-w_pre)/self.interval
-            p,q,r = (roll-roll_pre)/self.interval ,(pitch-pitch_pre)/self.interval,(yaw-yaw_pre)/self.interval
+            u,v,w =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
+            dot_u,dot_v,dot_w = self.acceleration.x_val,self.acceleration.y_val,self.acceleration.z_val
+            p,q,r = self.angular_velocity.x_val,self.angular_velocity.y_val,self.angular_velocity.z_val
             Fx = (dot_u-r*v +q*w-self.g*sin(self.pitch))*self.mass
             Fy = (dot_v-p*w+r*u+self.g*sin(self.roll)*cos(self.pitch))*self.mass
             Fz = (dot_w -q*u+p*v+self.g*cos(self.roll)*cos(self.pitch))*self.mass
@@ -174,7 +172,9 @@ class Quadrotor:
             x_pre,y_pre,z_pre =x,y,z
             u_pre,v_pre,w_pre =u,v,w
             roll_pre,pitch_pre,yaw_pre =roll,pitch,yaw
-            sleep(self.interval)
+            self.lock_.acquire_lock()
+            self.rotor.moveByRollPitchYawThrottleAsync(*self.controls[i],self.interval).join()
+            self.lock_.release_lock()
 
         # re-enable  api contol
         self.logger.log(f"Record finished, api control would be enabled.",style="blue")
@@ -244,4 +244,4 @@ def playback():
     rotor.playbackControls("record_rc.npy")
 
 if __name__ =="__main__":
-    playback()
+    run()
