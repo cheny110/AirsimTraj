@@ -171,7 +171,7 @@ def playback():
     rotor=Quadrotor()
     rotor.reset()
     rotor.takeoff()
-    rotor.playbackControls("record_rc.npy")
+    rotor.playbackControls("decode_rc.npy")
 
 if __name__ =="__main__":
-    run()
+    playback()
