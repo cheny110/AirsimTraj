@@ -45,7 +45,7 @@ class TrajectoryMPC:
         for k in range(self.N-1):
             x_next = self.fd(self.xk[k,:],self.uk[k,:])
             self.optimizer.subject_to(self.xk[k+1,:]==x_next)
-        self.optimizer.subject_to(self.xnc == self.xk[k])
+        self.optimizer.subject_to(self.xnc == self.xk[-2,:])
         
         # 目标函数
         cost =0
@@ -123,7 +123,7 @@ class TrajectoryMPC:
         self.u0 ,self.next_states =self.shift(u_res,x_m)
         return u_res[0],x_m[0]
     
-    def loadReferenceTrajectory(self,file="record_states.npy"):
+    def loadReferenceTrajectory(self,file="record_rc.npy"):
         self.logger.log(f"Load reference trajectory from local file {file}")
         data =np.load(file,allow_pickle=True).item()
         self.ref_xs = data["x"]
@@ -132,6 +132,7 @@ class TrajectoryMPC:
         self.ref_us = data["u"]
         self.ref_vs = data["v"]
         self.ref_ws =data["w"]
+        self.setReferenceControl(np.array([data["phi"],data["theta"],data["psi"],data["thrust"]]).T)
         self.ref_trajectory_len = len(self.ref_xs)
     
     def setReferenceControl(self,control):
@@ -162,25 +163,26 @@ class TrajectoryMPC:
             v_ex =np.ones(N-length)*v_ref[-1]
             w_ex =np.ones(N-length)*w_ref[-1]
             
-            np.concatenate([x_ref,x_ex],axis=None)
-            np.concatenate([y_ref,y_ex],axis=None)
-            np.concatenate([z_ref,z_ex],axis=None)
-            np.concatenate([u_ref,u_ex],axis=None)
-            np.concatenate([v_ref,v_ex],axis=None)
-            np.concatenate([w_ref,w_ex],axis=None)
+            x_ref=np.concatenate([x_ref,x_ex],axis=None)
+            y_ref=np.concatenate([y_ref,y_ex],axis=None)
+            z_ref=np.concatenate([z_ref,z_ex],axis=None)
+            u_ref=np.concatenate([u_ref,u_ex],axis=None)
+            v_ref=np.concatenate([v_ref,v_ex],axis=None)
+            w_ref=np.concatenate([w_ref,w_ex],axis=None)
         
         X=np.array([x_ref,y_ref,z_ref,u_ref,v_ref,w_ref])
         return X
     
-    def desiredXnc(self,idx):
-        idx+=1
+    def desiredXnc(self,iter):
+        idx =iter+ self.N
+        if idx >len(self.ref_xs)-1:
+            idx =-1
         x_nc = self.ref_xs[idx]
         y_nc = self.ref_ys[idx]
         z_nc =self.ref_zs[idx]
         u_nc =self.ref_us[idx]
         v_nc =self.ref_vs[idx]
         w_nc=self.ref_ws[idx]
-        
         Xnc = np.array([x_nc,y_nc,z_nc,u_nc,v_nc,w_nc])
         return Xnc
     
@@ -188,19 +190,19 @@ class TrajectoryMPC:
         phi_ref =self.ref_controls[idx:(idx+N),0]
         theta_ref =self.ref_controls[idx:(idx+N),1]
         psi_ref =self.ref_controls[idx:(idx+N),2]
-        thrust_ref =self.ref_controls[idx:(idx+N),3] *self.quadrotor.max_thrust
+        thrust_ref =self.ref_controls[idx:(idx+N),3]
         
         length = len(thrust_ref)
         if length<N:
            phi_ex =np.ones(N-length)*phi_ref[-1]
            theta_ex = np.ones(N-length)*theta_ref[-1]
            psi_ex =np.ones(N-length)*psi_ref[-1]
-           thrust_ex =np.ones(N-length)*theta_ref[-1]
+           thrust_ex =np.ones(N-length)*thrust_ref[-1]
            
-           np.concatenate([phi_ref,phi_ex],axis=None)
-           np.concatenate([theta_ref,theta_ex],axis=None)
-           np.concatenate([psi_ref,psi_ex],axis=None) 
-           np.concatenate([thrust_ref,thrust_ex],axis=None)
+           phi_ref=np.concatenate([phi_ref,phi_ex],axis=None)
+           theta_ref=np.concatenate([theta_ref,theta_ex],axis=None)
+           psi_ref=np.concatenate([psi_ref,psi_ex],axis=None) 
+           thrust_ref=np.concatenate([thrust_ref,thrust_ex],axis=None)
 
         U= np.array([phi_ref,theta_ref,psi_ref,thrust_ref])
         return U

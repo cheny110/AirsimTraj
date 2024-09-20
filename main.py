@@ -15,7 +15,7 @@ TIME_INTERVAL =0.02
 N = 30
 MAX_THRUST=4.179446268*4
 
-Wx = np.array([16,11,13,2.0,2.1,2.3])
+Wx = np.array([100,80,60,4.4,4.1,4.3])
 Wu = np.array([17,13,76,0.058])
 logger =Console()
 
@@ -31,7 +31,7 @@ if __name__ =="__main__":
     else:
         logger.log("Ignore reference trajectory generation.")
     mpc =TrajectoryMPC(quadrotor,Wx,Wu,TIME_INTERVAL,N)
-    mpc.setReferenceControl(mpc.quadrotor.controls)
+    #mpc.setReferenceControl(mpc.quadrotor.controls)
     mpc.loadReferenceTrajectory()
     hist_thrust =[]
     hist_phi=[]
@@ -45,7 +45,7 @@ if __name__ =="__main__":
     for iter in track(range(int(SIM_TIME/TIME_INTERVAL))):
         next_al_trajectory = mpc.desiredState(N,iter)
         next_al_control = mpc.desiredControl(N,iter)
-        xnc =mpc.desiredXnc(N)
+        xnc =mpc.desiredXnc(iter)
         try:
             u_res,x =mpc.solve(next_al_trajectory,next_al_control,xnc)
             phi,theta,psi,thrust =u_res
@@ -63,25 +63,25 @@ if __name__ =="__main__":
         hist_y.append(y)
         hist_z.append(z)
     #draw reslut
-    plt.figure()
-    plt.subplot(311)
-    plt.plot(hist_time,hist_thrust)
-    plt.xlabel("time: s")
-    plt.ylabel("thrust: N")
+    # plt.figure()
+    # plt.subplot(311)
+    # plt.plot(hist_time,hist_thrust)
+    # plt.xlabel("time: s")
+    # plt.ylabel("thrust: N")
     
-    plt.subplot(312)
-    plt.xlabel("time: s")
-    plt.ylabel("orientation: rad")
-    plt.plot(hist_time,hist_phi)
-    plt.plot(hist_time,hist_theta)
-    plt.plot(hist_time,hist_psi)
-    plt.savefig("result.png")
+    # plt.subplot(312)
+    # plt.xlabel("time: s")
+    # plt.ylabel("orientation: rad")
+    # plt.plot(hist_time,hist_phi)
+    # plt.plot(hist_time,hist_theta)
+    # plt.plot(hist_time,hist_psi)
+    # plt.savefig("result.png")
 
     
-    plot = Plotting("Quadrotor")
-    plot.plot_path([hist_x,hist_y,hist_y],"quadrotor")
-    reference = [mpc.ref_xs,mpc.ref_ys,mpc.ref_zs]
-    plot.plot_path(reference, "reference")
+    # plot = Plotting("Quadrotor")
+    # plot.plot_path([hist_x,hist_y,hist_y],"quadrotor")
+    # reference = [mpc.ref_xs,mpc.ref_ys,mpc.ref_zs]
+    # plot.plot_path(reference, "reference")
     #save result
     save_data = {
         "phi":hist_phi,
