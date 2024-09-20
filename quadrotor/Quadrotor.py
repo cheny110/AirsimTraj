@@ -1,3 +1,4 @@
+from tkinter import NO
 import numpy as np
 from airsim.client import MultirotorClient
 from airsim import to_eularian_angles
@@ -8,7 +9,7 @@ from math import cos,sin,sqrt
 from rich.progress import track
 
 class Quadrotor:
-    def __init__(self, pos=[0,0,0], ori=[0,0,0], dpos=[0,0,0], dori=[0,0,0],max_thrust=4.17*4,sim_time=10,interval=0.02):
+    def __init__(self, pos=[0,0,0], ori=[0,0,0], dpos=[0,0,0], dori=[0,0,0],max_thrust=4.17*4,sim_time=10,interval=0.02,logger:Console=None):
         # The configuration of quadrotor
         self.pos = np.array(pos)
         self.ori = np.array(ori)
@@ -18,7 +19,7 @@ class Quadrotor:
         self.g = 9.8
         self.sim_time=sim_time
         self.interval =interval 
-        self.logger =Console()
+        self.logger =logger if logger else Console()
         self.lock_=Lock()
         self.rotor = MultirotorClient()
         self.connectAirsim()
@@ -141,8 +142,6 @@ class Quadrotor:
         thetas=[]
         psis=[]
         thrusts=[]
-        u_pre,v_pre,w_pre =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
-        x_pre,y_pre,z_pre =self.position.x_val,self.position.y_val,self.position.z_val
         sleep(self.interval)
         for i in track(range(int(self.sim_time/self.interval))):
             x,y,z =self.position.x_val,self.position.y_val,self.position.z_val

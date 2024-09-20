@@ -1,9 +1,10 @@
 
-from Quadrotor import Quadrotor
+from quadrotor.Quadrotor import Quadrotor
 from rich.console import Console
 import numpy as np
 from threading import Lock
 from rich.progress import track
+
 logger =Console()
 lock =Lock()
 if __name__ =="__main__":

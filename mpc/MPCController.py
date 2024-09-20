@@ -1,7 +1,7 @@
 import casadi as ca
 import numpy as np
 import math
-from Quadrotor import Quadrotor
+from quadrotor.Quadrotor import Quadrotor
 from math import sin,cos
 from rich.console import Console
 

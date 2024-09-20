@@ -1,6 +1,6 @@
 import matplotlib.backends
-from Quadrotor import Quadrotor
-from MPCController import TrajectoryMPC
+from quadrotor.Quadrotor import Quadrotor
+from mpc.MPCController import TrajectoryMPC
 import numpy as np
 from rich.console import Console
 from rich.progress import track
@@ -8,7 +8,6 @@ from rich.traceback import install
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-from plotting_3d import Plotting
 
 SIM_TIME =10
 TIME_INTERVAL =0.02
