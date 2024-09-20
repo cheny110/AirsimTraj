@@ -23,6 +23,7 @@ class Quadrotor:
         self.rotor = MultirotorClient()
         self.connectAirsim()
         self.max_thrust = max_thrust
+        self.drag_coeff = 1.3
         self.controls =self.ref_control()
         self.runBackgroudThreads()
     
@@ -80,8 +81,8 @@ class Quadrotor:
             self.velocity = self.kinematics.linear_velocity
             self.position =self.kinematics.position
             self.angular_velocity =self.imu.angular_velocity
-            self.pitch,self.roll,self.yaw=to_eularian_angles(self.imu.orientation) #机体坐标系
-            self.acceleration = self.imu.linear_acceleration
+            self.pitch,self.roll,self.yaw=to_eularian_angles(self.kinematics.orientation) #机体坐标系
+            self.acceleration = self.kinematics.linear_acceleration
             #self.logger.log(f"roll:{self.roll}, pitch:{self.pitch},yaw:{self.yaw}")
             self.calculateReb()
             sleep(0.005)
@@ -146,19 +147,17 @@ class Quadrotor:
         psis=[]
         thrusts=[]
         u_pre,v_pre,w_pre =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
-        roll_pre,pitch_pre,yaw_pre =self.roll,self.pitch,self.yaw
+        x_pre,y_pre,z_pre =self.position.x_val,self.position.y_val,self.position.z_val
+        sleep(self.interval)
         for i in track(range(int(self.sim_time/self.interval))):
             x,y,z =self.position.x_val,self.position.y_val,self.position.z_val
             u,v,w =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
             roll,pitch,yaw =self.roll,self.pitch,self.yaw
             #calculate thrust
             u,v,w =self.velocity.x_val,self.velocity.y_val,self.velocity.z_val
-            dot_u,dot_v,dot_w = self.acceleration.x_val,self.acceleration.y_val,self.acceleration.z_val
-            p,q,r = self.angular_velocity.x_val,self.angular_velocity.y_val,self.angular_velocity.z_val
-            Fx = (dot_u-r*v +q*w-self.g*sin(self.pitch))*self.mass
-            Fy = (dot_v-p*w+r*u+self.g*sin(self.roll)*cos(self.pitch))*self.mass
-            Fz = (dot_w -q*u+p*v+self.g*cos(self.roll)*cos(self.pitch))*self.mass
-            thrust =sqrt(Fx**2+Fy**2+Fz**2)
+            dot_w = self.acceleration.z_val
+            thrust =abs(self.mass*(dot_w-self.g)/(cos(roll)*cos(pitch)))
+            
             xs.append(x)
             ys.append(y)
             zs.append(z)
@@ -169,9 +168,6 @@ class Quadrotor:
             thetas.append(pitch)
             psis.append(yaw)
             thrusts.append(thrust)
-            x_pre,y_pre,z_pre =x,y,z
-            u_pre,v_pre,w_pre =u,v,w
-            roll_pre,pitch_pre,yaw_pre =roll,pitch,yaw
             self.lock_.acquire_lock()
             self.rotor.moveByRollPitchYawThrottleAsync(*self.controls[i],self.interval).join()
             self.lock_.release_lock()
@@ -183,6 +179,13 @@ class Quadrotor:
         self.lock_.release_lock()
         
         #save record data to file.
+        #filter thrust
+        thrusts_filtered = []
+        for t in thrusts:
+            if t >self.max_thrust:
+                t=self.max_thrust
+            thrusts_filtered.append(t)
+        
         self.logger.log(f"recorded rc control data wouble be saved to {save_file}")
         save_data = {
             #state
@@ -196,9 +199,10 @@ class Quadrotor:
             "phi":phis,
             "theta":thetas,
             "psi":psis,
-            "thrust":thrusts
+            "thrust":thrusts_filtered
         }
         np.save(save_file,save_data,allow_pickle=True)
+        self.logger.log("Reference control saved.", style="blue on white")
         
     def playbackControls(self,value):
         data=[]
@@ -233,7 +237,9 @@ def run():
     rotor.reset()
     rotor.takeoff()
     rotor.setTracelineType([0,1,0,1])
-    rotor.recordRcTrajectory()
+    record_thread =Thread()
+    record_thread.run =rotor.recordRcTrajectory
+    record_thread.start()
     rotor.hover()
     
 def playback():

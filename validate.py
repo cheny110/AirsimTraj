@@ -8,10 +8,9 @@ logger =Console()
 lock =Lock()
 if __name__ =="__main__":
     rotor =Quadrotor()
-    # rotor.reset()
+    rotor.reset()
     # logger.print("Now fly reference trajectory,please enable trace line mannually!",style="red")
     # rotor.recordTrajectory()
-    rotor.reset()
     logger.print("Now fly result trajectory,please disable trace line")
     trajectory =np.load("result_controls.npy",allow_pickle=True).item()
     phi = trajectory["phi"]
@@ -22,7 +21,7 @@ if __name__ =="__main__":
     rotor.setTracelineType([0,0,1,1],3)
     rotor.takeoff()
     for t in thrust:
-        t = 1.05*rotor.mass*9.8/rotor.max_thrust
+        t = t/rotor.max_thrust*1.025
         thrust_norm.append(t)
     for i,j,k,n in track(zip(phi,theta,psi,thrust_norm)):
         rotor.lock_.acquire_lock()
