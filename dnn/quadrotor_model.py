@@ -7,7 +7,7 @@ print(f"Cuda available ?{torch.cuda.is_available()}")
 
 
 class QuadrotorModel(nn.Module):
-    def __init__(self,in_dim=16,out_dim=12,hidden_dim=52,hidden_layers=5,activation=nn.ReLU) -> None:
+    def __init__(self,in_dim=640,out_dim=12,hidden_dim=52,hidden_layers=5,activation=nn.ReLU) -> None:
         super().__init__()
         self.in_dim = in_dim
         self.out_dim =out_dim

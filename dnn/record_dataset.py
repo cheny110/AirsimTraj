@@ -1,6 +1,7 @@
 
 import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from quadrotor.Quadrotor import Quadrotor
 from rich.console import Console
 from rich.progress import track
@@ -21,7 +22,7 @@ if __name__ == "__main__":
     quadrotor.lock_.acquire_lock()
     quadrotor.rotor.enableApiControl(False)
     quadrotor.lock_.release_lock()
-    bias = RESULT_INTERVAL*RECORD_RATE
+    bias = int(RESULT_INTERVAL*RECORD_RATE)
     logger.log("Start recording, please fly the quadrotor manually.",style="blue on white")
     for i in track(range(SAMPLE_NUM+bias)):
         x,y,z = quadrotor.position.x_val,quadrotor.position.y_val,quadrotor.position.z_val
@@ -30,12 +31,9 @@ if __name__ == "__main__":
         dot_phi,dot_theta,dot_psi = quadrotor.angular_velocity.x_val,quadrotor.angular_velocity.y_val,quadrotor.angular_velocity.z_val
         phi,theta,psi = quadrotor.roll,quadrotor.pitch,quadrotor.yaw
         thrust =abs(quadrotor.mass*(az-quadrotor.g)/(cos(phi)*cos(theta)))
-        datas.append([x,y,z,u,v,w,ax,ay,az,dot_phi,dot_theta,dot_phi,phi,theta,psi,thrust])
+        datas.append([x,y,z,u,v,w,phi,theta,psi,dot_phi,dot_theta,dot_psi,ax,ay,az,thrust])
         sleep(1/RECORD_RATE)
     
-    
-    for i in range(len(datas)-bias):
-        datas[i][:6]=datas[i+bias][:6]
         
     logger.log(f"Record dataset finished, data wouble be saved to {SAVE_GT_FILE}",style="blue on white")
     datas=np.array(datas)
