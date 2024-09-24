@@ -1,4 +1,8 @@
 [train]
 epochs = 6500
 lr = 1.5e-4
-
+decay_rate:0.995
+lr_decay_start = 300
+num_epoch_lr_decay = 1 #decay_frequency
+val_frequency = 30
+print_frequence = 10

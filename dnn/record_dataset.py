@@ -9,7 +9,6 @@ from time import sleep
 from math import cos
 import numpy as np
 SAVE_DATA_FILE= "dnn_record_dataset.npy"
-SAVE_GT_FILE ="dnn_record_gt.npy"
 SAMPLE_NUM = 50000
 RECORD_RATE = 50
 RESULT_INTERVAL = 0.8
@@ -35,8 +34,8 @@ if __name__ == "__main__":
         sleep(1/RECORD_RATE)
     
         
-    logger.log(f"Record dataset finished, data wouble be saved to {SAVE_GT_FILE}",style="blue on white")
+    logger.log(f"Record dataset finished, data wouble be saved to {SAVE_DATA_FILE}",style="blue on white")
     datas=np.array(datas)
-    np.save(f"./data/{SAVE_GT_FILE}",datas)
+    np.save(f"./data/{SAVE_DATA_FILE}",datas)
     
     
