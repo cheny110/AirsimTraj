@@ -16,12 +16,12 @@ class QuadrotorModel(nn.Module):
         self.layers = nn.ModuleList()
         self._init_weight()
         
-        first_layer = nn.Linear(in_dim,hidden_dim[0])
+        first_layer = nn.Linear(in_dim,hidden_dim[0],dtype=torch.float64)
         self.layers.append(first_layer)
         for i in range(self.hidden_layers):
-            hidden_layer = nn.Linear(hidden_dim[i],hidden_dim[i+1])
+            hidden_layer = nn.Linear(hidden_dim[i],hidden_dim[i+1],dtype=torch.float64)
             self.layers.append(hidden_layer)
-        out_layer =nn.Linear(hidden_dim[-1],out_dim)
+        out_layer =nn.Linear(hidden_dim[-1],out_dim,dtype=torch.float64)
         self.layers.append(out_layer)
         
     def forward(self,x):

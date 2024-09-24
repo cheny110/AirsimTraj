@@ -26,5 +26,5 @@ class AirsimDataset(Dataset):
         gt  = self.data[self.bias+index][:12]
         return data,gt    
     def __len__(self):
-        return len(self.data)-bias
+        return len(self.data)-self.bias
     

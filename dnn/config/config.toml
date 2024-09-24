@@ -1,8 +1,9 @@
 [train]          #parameters for training
 epochs = 6500    
 lr = 1.5e-4      #learning rate
-decay_rate:0.995 #decay ratio
+decay_rate=0.995 #decay ratio
 lr_decay_start = 300  # learning rate decay start epoch
 num_epoch_lr_decay = 1 #decay_frequency
 val_frequency = 30     #validate/test frequency
-print_frequence = 10   #logger print frequency
+print_frequency = 5   #logger print frequency
+batch_size = 32

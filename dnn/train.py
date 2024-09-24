@@ -1,46 +1,52 @@
 
 
+from cProfile import label
 from math import inf
+from numpy import dtype
 import toml
 import torch
 from quadrotor_model import QuadrotorModel
-from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 from torch.autograd import Variable
 from criteria import StateLoss
 import os
 from rich.console import Console
-from dataloader import AirsimDataset
+from rich.progress import track
+from dataset import AirsimDataset
+from torch.utils.data import DataLoader
 import time
+
 logger=Console()
+
 train_record ={
         "best_loss": inf,
         "best_model_name":""
     }
 
-def validate(model:QuadrotorModel,test_loader,writer):
+def validate(model:QuadrotorModel,test_loader:DataLoader,writer):
     global train_record
     model.eval()
     val_loss =0
     criterion = StateLoss()
-    for i, input,gt in enumerate(test_loader):
+    for i, data in enumerate(test_loader):
         with torch.no_grad():
-            input = Variable(input).cuda()
-            gt= Variable(input).cuda()
-            output =model(input)
+            indata = torch.tensor(data[0]).view([test_loader.batch_size,-1]).cuda()
+            gt= torch.tensor(data[1]).cuda()
+            output =model(indata)
             val_loss += criterion(output,gt)
     val_loss/=len(test_loader)
     writer.add_scalar("val_loss",val_loss)
     if train_record["best_loss"]>= val_loss:
-        model_name = "model_best_{val_loss:.1f}".pth
+        model_name = f"model_best_{val_loss:.1f}.pth"
         save_file = os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/{model_name}")
         logger.log(f"Update best saved model, {model_name}",style="blue on white")
         train_record["best_loss"] = val_loss
-        torch.save(model,model_name)
+        torch.save(model,os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/model_name"))
 
-def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:SummaryWriter):
+def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:SummaryWriter,logger:Console=logger):
     global train_record
-    model.train()
+    model.cuda()
     optimizer = torch.optim.Adam(model.parameters(),train_config["lr"],weight_decay=train_config["decay_rate"])
     num_epochs = train_config["epochs"]
     decay_start_epoch =train_config["lr_decay_start"]
@@ -50,38 +56,44 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
     print_frequency = train_config["print_frequency"]
     validate_frequency =train_config["val_frequency"]
     i_tb=0 #tensorboard iteration
-    for epoch in range(num_epochs):
+    for epoch in track(range(num_epochs)):
         train_loss =0
+        model.train()
         if epoch > decay_start_epoch:
             scheduler.step()
-        for i, input,target in enumerate(train_loader):
-            input = Variable(input).cuda()
-            target =Variable(target).cuda()
+        for i, batch in enumerate(train_loader):
+            inputs,labels=batch
+            controls_in = torch.tensor(inputs,dtype=torch.float64,device="cuda").view([train_loader.batch_size,-1])
+            labels =torch.tensor(labels,dtype=torch.float64,device="cuda")
             optimizer.zero_grad()
-            output = model(input)
-            loss =criterion(output,target)
+            output = model(controls_in)
+            loss =criterion(output,labels)
             loss.backward()
             optimizer.step()
             train_loss +=loss.item()
+            
+        train_loss/= len(train_loader)
         if epoch % print_frequency ==0:
             i_tb += 1
-            logger.log(f"epoch:{epoch}, loss:{train_loss}")
+            logger.log(f"epoch:{epoch}, loss:{train_loss:.2f}")
             writer.add_scalar("train_loss",loss,i_tb)
         if epoch % validate_frequency ==0:
-            validate(model,test_loader,train_record,writer)
+            validate(model,test_loader,writer)
         
             
 if __name__ =="__main__":
     config_file = os.path.join(os.path.dirname(__file__),"config/config.toml")
     config =toml.load(config_file)
     model = QuadrotorModel()
-    writer =SummaryWriter(log_dir=os.path.join(os.path.dirname(os.path.dirname(__file__),"exp")),
-                        filename_suffix=time.strftime("%d-%M-%s",time.time()))
-    train_loader = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
+    writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%M-%s",time.localtime())))
+    train_dataset = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
                                  mode="train",
                                  logger=logger)
-    test_loader = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
+    test_dataset= AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
                                 mode="test",
                                 logger=logger)
-    train(model,train_loader,test_loader,config["train"],writer)
+    batch_size = config["train"]["batch_size"]
+    train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,num_workers=12,drop_last=True)
+    test_loader = DataLoader(test_dataset,batch_size=1,shuffle=True,num_workers=12,drop_last=False)
+    train(model,train_loader,test_loader,config["train"],writer,logger)
     
