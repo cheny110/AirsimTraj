@@ -1,0 +1,4 @@
+[train]
+epochs = 6500
+lr = 1.5e-4
+
