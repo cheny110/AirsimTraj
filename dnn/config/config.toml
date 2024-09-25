@@ -9,4 +9,8 @@ print_frequency = 5   #logger print frequency
 batch_size = 32
 resume = false
 pretrain_model = data/model_best_24.9.pth
+dataload_workers=12
 
+[test]
+batch_size =1
+dataload_workers=4

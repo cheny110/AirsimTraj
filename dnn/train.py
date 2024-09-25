@@ -1,14 +1,10 @@
 
-
-from cProfile import label
 from math import inf
-from numpy import dtype
 import toml
 import torch
 from quadrotor_model import QuadrotorModel
 from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
-from torch.autograd import Variable
 from criteria import StateLoss
 import os
 from rich.console import Console
@@ -60,7 +56,7 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
     print_frequency = train_config["print_frequency"]
     validate_frequency =train_config["val_frequency"]
     i_tb=0 #tensorboard iteration
-    for epoch in track(range(num_epochs)):
+    for epoch in track(range(1,num_epochs)):
         train_loss =0
         model.train()
         if epoch > decay_start_epoch:
@@ -76,7 +72,7 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
             optimizer.step()
             train_loss +=loss.item()
             
-        train_loss/= len(train_loader)
+        train_loss= len(train_loader)
         if epoch % print_frequency ==0:
             i_tb += 1
             logger.log(f"epoch:{epoch}, loss:{train_loss:.2f}")
@@ -100,7 +96,7 @@ if __name__ =="__main__":
             model.load_state_dict(pretrain_weight)
             model.eval()
             logger.log("Load pretrained weight successfully.",style="green")
-    writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%M-%s",time.localtime())))
+    writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%h-%M-%S",time.localtime())))
     train_dataset = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
                                  mode="train",
                                  logger=logger)
@@ -108,7 +104,7 @@ if __name__ =="__main__":
                                 mode="test",
                                 logger=logger)
     batch_size = config["train"]["batch_size"]
-    train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,num_workers=12,drop_last=True)
-    test_loader = DataLoader(test_dataset,batch_size=1,shuffle=True,num_workers=12,drop_last=False)
+    train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,num_workers=config["train"]["dataload_workers"],drop_last=True)
+    test_loader = DataLoader(test_dataset,batch_size=config["test"]["batch_size"],shuffle=True,num_workers=config["test"]["dataload_workers"],drop_last=False)
     train(model,train_loader,test_loader,config["train"],writer,logger)
     
