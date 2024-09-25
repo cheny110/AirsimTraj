@@ -7,7 +7,7 @@ import numpy as np
 from quadrotor.Quadrotor import Quadrotor
 from typing import Any, SupportsFloat
 from rich.console import Console
-
+from mpc.MPCController import TrajectoryMPC
 
 class  AirsimEnv(Env):
     HOVER = 0
@@ -19,6 +19,7 @@ class  AirsimEnv(Env):
         self.state = initial_state
         self.logger = logger if logger else Console()
         self.rotor =Quadrotor()
+        self.mpcController =None
         self.reward = 0
         wx_low =np.array([0,0,0,0,0,0])
         wx_hight =np.array([1e2,1e2,1e2,1e1,1e1,1e1,1e1])
@@ -41,8 +42,17 @@ class  AirsimEnv(Env):
         self.logger.log("Airsim RL environment reset!", style="blue on white")
     
 
-    def step(self, action: Any) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: np.ndarray) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         #TODO: to be implemented 
-        #更细状态并计算奖励
+        #更新状态并计算奖励
+        wx = action[0:6]
+        wu= action[6:10]
+        self.mpcController=TrajectoryMPC(self.rotor,wx,wu)
+        self.state = self.HOVER
+        self.rotor.takeoff()
+        self.rotor.position
+        # first evaluate hover state reward
+        
+        
         return self.state,self.reward,self.done,self.truncated,self.info
     

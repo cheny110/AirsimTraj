@@ -1,14 +1,14 @@
 [train]          #parameters for training
-epochs = 6500    
-lr = 1.5e-4      #learning rate
-decay_rate=0.995 #decay ratio
-lr_decay_start = 300  # learning rate decay start epoch
+epochs = 300    
+lr = 1.5e-3     #learning rate
+decay_rate=0.95 #decay ratio
+lr_decay_start = 50  # learning rate decay start epoch
 num_epoch_lr_decay = 1 #decay_frequency
-val_frequency = 30     #validate/test frequency
+val_frequency = 10     #validate/test frequency
 print_frequency = 5   #logger print frequency
 batch_size = 32
 resume = false
-pretrain_model = data/model_best_24.9.pth
+pretrain_model = "data/model_best_24.9.pth"
 dataload_workers=12
 
 [test]

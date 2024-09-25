@@ -8,8 +8,8 @@ from rich.progress import track
 from time import sleep
 from math import cos
 import numpy as np
-SAVE_DATA_FILE= "dnn_record_dataset.npy"
-SAMPLE_NUM = 50000
+SAVE_DATA_FILE= "dnn_record_dataset2.npy"
+SAMPLE_NUM = 10000
 RECORD_RATE = 50
 RESULT_INTERVAL = 0.8
 
@@ -18,6 +18,7 @@ if __name__ == "__main__":
     quadrotor =Quadrotor()
     quadrotor.reset()
     datas =[]
+    quadrotor.takeoff()
     quadrotor.lock_.acquire_lock()
     quadrotor.rotor.enableApiControl(False)
     quadrotor.lock_.release_lock()

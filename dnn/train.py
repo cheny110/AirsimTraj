@@ -1,5 +1,6 @@
 
 from math import inf
+from math import log
 import toml
 import torch
 from quadrotor_model import QuadrotorModel
@@ -39,10 +40,9 @@ def validate(model:QuadrotorModel,test_loader:DataLoader,writer,epoch):
     writer.add_scalar("val_loss",val_loss,val_i_tb)
     if train_record["best_loss"]>= val_loss:
         model_name = f"model_best_{val_loss:.1f}.pth"
-        save_file = os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/{model_name}")
         logger.log(f"Update best saved model, {model_name}",style="blue on white")
         train_record["best_loss"] = val_loss
-        torch.save(model,os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/{model_name}"))
+        torch.save(model.state_dict,os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/{model_name}"))
 
 def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:SummaryWriter,logger:Console=logger):
     global train_record
@@ -63,7 +63,7 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
             scheduler.step()
         for i, batch in enumerate(train_loader):
             inputs,labels=batch
-            controls_in = torch.tensor(inputs,dtype=torch.float64,device="cuda").view([train_loader.batch_size,-1])
+            controls_in = torch.tensor(inputs,dtype=torch.float64,device="cuda").view(train_loader.batch_size,-1)
             labels =torch.tensor(labels,dtype=torch.float64,device="cuda")
             optimizer.zero_grad()
             output = model(controls_in)
@@ -71,8 +71,7 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
             loss.backward()
             optimizer.step()
             train_loss +=loss.item()
-            
-        train_loss= len(train_loader)
+        train_loss = log(train_loss)
         if epoch % print_frequency ==0:
             i_tb += 1
             logger.log(f"epoch:{epoch}, loss:{train_loss:.2f}")
@@ -93,10 +92,10 @@ if __name__ =="__main__":
         else:
             logger.log("Resume training...",style="green")
             pretrain_weight=torch.load(model_full_path)
-            model.load_state_dict(pretrain_weight)
+            model.load_state_dict(pretrain_weight.state_dict())
             model.eval()
             logger.log("Load pretrained weight successfully.",style="green")
-    writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%h-%M-%S",time.localtime())))
+    writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%H-%M-%s",time.localtime())))
     train_dataset = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
                                  mode="train",
                                  logger=logger)

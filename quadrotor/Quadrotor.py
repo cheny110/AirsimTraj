@@ -220,7 +220,15 @@ class Quadrotor:
             self.rotor.moveByRollPitchYawThrottleAsync(i,j,k,m,self.interval).join()
             self.lock_.release_lock()
         
-        
+    def playback_dataset(self,file="./data/dnn_record_dataset2.npy",hz=50):
+        records = np.load(file)
+        for record in records:
+            phi,theta,psi = record[6:9]
+            thrust =record[-1]
+            self.lock_.acquire_lock()
+            self.rotor.moveByRollPitchYawThrottleAsync(phi,-theta,-psi,thrust,1/hz).join()
+            self.lock_.release_lock()
+    
     def hover(self):
         self.lock_.acquire_lock()
         self.rotor.hoverAsync()
@@ -241,7 +249,7 @@ def playback():
     rotor.reset()
     rotor.takeoff()
     rotor.setTracelineType([0,0,1,1])
-    rotor.playbackControls("record_rc.npy")
+    rotor.playback_dataset()
 
 if __name__ =="__main__":
     playback()
