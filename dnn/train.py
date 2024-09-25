@@ -24,8 +24,10 @@ train_record ={
         "best_model_name":""
     }
 
-def validate(model:QuadrotorModel,test_loader:DataLoader,writer):
-    global train_record
+val_i_tb=0
+
+def validate(model:QuadrotorModel,test_loader:DataLoader,writer,epoch):
+    global train_record,val_i_tb
     model.eval()
     val_loss =0
     criterion = StateLoss()
@@ -36,13 +38,15 @@ def validate(model:QuadrotorModel,test_loader:DataLoader,writer):
             output =model(indata)
             val_loss += criterion(output,gt)
     val_loss/=len(test_loader)
-    writer.add_scalar("val_loss",val_loss)
+    logger.log(f"validate once, epoch {epoch}, loss:{val_loss}",style="purple")
+    val_i_tb+=1
+    writer.add_scalar("val_loss",val_loss,val_i_tb)
     if train_record["best_loss"]>= val_loss:
         model_name = f"model_best_{val_loss:.1f}.pth"
         save_file = os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/{model_name}")
         logger.log(f"Update best saved model, {model_name}",style="blue on white")
         train_record["best_loss"] = val_loss
-        torch.save(model,os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/model_name"))
+        torch.save(model,os.path.join(os.path.dirname(os.path.dirname(__file__)),f"data/{model_name}"))
 
 def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:SummaryWriter,logger:Console=logger):
     global train_record
@@ -76,7 +80,7 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
         if epoch % print_frequency ==0:
             i_tb += 1
             logger.log(f"epoch:{epoch}, loss:{train_loss:.2f}")
-            writer.add_scalar("train_loss",loss,i_tb)
+            writer.add_scalar("train_loss",train_loss,i_tb)
         if epoch % validate_frequency ==0:
             validate(model,test_loader,writer)
         
@@ -85,6 +89,17 @@ if __name__ =="__main__":
     config_file = os.path.join(os.path.dirname(__file__),"config/config.toml")
     config =toml.load(config_file)
     model = QuadrotorModel()
+    if config["train"]["resume"]: #resume training
+        model_path = config["train"]["pretrain_model"]
+        model_full_path =os.path.join(os.path.dirname(os.path.dirname(__file__)),model_path)
+        if not os.path.exists(model_full_path):
+            logger.log("Failed to resume training, saved model can't be found!!!",style="red on white")
+        else:
+            logger.log("Resume training...",style="green")
+            pretrain_weight=torch.load(model_full_path)
+            model.load_state_dict(pretrain_weight)
+            model.eval()
+        logger.log("Resume training")
     writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%M-%s",time.localtime())))
     train_dataset = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
                                  mode="train",

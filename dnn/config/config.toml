@@ -7,3 +7,6 @@ num_epoch_lr_decay = 1 #decay_frequency
 val_frequency = 30     #validate/test frequency
 print_frequency = 5   #logger print frequency
 batch_size = 32
+resume = false
+pretrain_model = data/model_best_24.9.pth
+
