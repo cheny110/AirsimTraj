@@ -82,7 +82,7 @@ def train(model:QuadrotorModel,train_loader,test_loader,train_config,writer:Summ
             logger.log(f"epoch:{epoch}, loss:{train_loss:.2f}")
             writer.add_scalar("train_loss",train_loss,i_tb)
         if epoch % validate_frequency ==0:
-            validate(model,test_loader,writer)
+            validate(model,test_loader,writer,epoch)
         
             
 if __name__ =="__main__":
@@ -99,7 +99,7 @@ if __name__ =="__main__":
             pretrain_weight=torch.load(model_full_path)
             model.load_state_dict(pretrain_weight)
             model.eval()
-        logger.log("Resume training")
+            logger.log("Load pretrained weight successfully.",style="green")
     writer =SummaryWriter(os.path.join(os.path.dirname(os.path.dirname(__file__)),"exp",time.strftime("%d-%M-%s",time.localtime())))
     train_dataset = AirsimDataset(os.path.join(os.path.dirname(os.path.dirname(__file__)),"data/dnn_record_dataset.npy"),
                                  mode="train",
